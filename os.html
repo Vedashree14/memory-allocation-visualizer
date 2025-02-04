@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Allocation Visualizer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0a192f;
+            --bg-light: #112240;
+            --text-primary: #ccd6f6;
+            --text-secondary: #8892b0;
+            --accent-green: #64ffda;
+            --accent-blue: #57cbff;
+            --accent-purple: #9d4edd;
+            --block-border: #233554;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .memory-dashboard {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .dashboard-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            background-color: var(--bg-light);
+            padding: 1.5rem;
+            border-radius: 10px;
+        }
+
+        .dashboard-header h1 {
+            color: var(--accent-green);
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .input-section {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .input-group {
+            flex-grow: 1;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: var(--bg-light);
+            border: 1px solid var(--text-secondary);
+            color: var(--text-primary);
+            border-radius: 5px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .btn-simulate {
+            background-color: var(--accent-green);
+            color: var(--bg-dark);
+        }
+
+        .btn-random {
+            background-color: var(--accent-blue);
+            color: var(--bg-dark);
+        }
+
+        .btn-clear {
+            background-color: var(--accent-purple);
+            color: white;
+        }
+
+        .allocation-method {
+            background-color: var(--bg-light);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .allocation-method h2 {
+            color: var(--accent-green);
+            margin-bottom: 1rem;
+            border-bottom: 2px solid var(--text-secondary);
+            padding-bottom: 0.5rem;
+        }
+
+        .memory-block-labels {
+            display: flex;
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+
+        .memory-block-label {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            padding: 0 5px;
+            opacity: 0.7;
+        }
+
+        .memory-block-container {
+            display: flex;
+            width: 100%;
+            height: 120px;
+            background-color: var(--bg-dark);
+            border-radius: 10px;
+            border: 2px solid var(--block-border);
+            overflow: hidden;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .memory-block {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            border-right: 2px solid var(--block-border);
+            transition: all 0.3s ease;
+        }
+
+        .memory-block:last-child {
+            border-right: none;
+        }
+
+        .memory-block .block-label {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: var(--bg-dark);
+            font-weight: bold;
+            z-index: 10;
+            text-shadow: 0 0 5px rgba(255,255,255,0.7);
+            text-align: center;
+            padding: 0 10px;
+        }
+
+        .memory-block-allocated {
+            background-color: var(--accent-green);
+        }
+
+        .memory-block-free {
+            background-color: var(--text-secondary);
+        }
+
+        .allocation-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+        }
+
+        .stat-card {
+            background-color: var(--bg-dark);
+            padding: 1rem;
+            border-radius: 5px;
+            text-align: center;
+            border: 1px solid var(--block-border);
+        }
+
+        .stat-card h3 {
+            color: var(--accent-blue);
+            margin-bottom: 0.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .input-section {
+                flex-direction: column;
+            }
+            .allocation-stats {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="memory-dashboard">
+        <div class="dashboard-header">
+            <h1>Memory Allocation Visualizer</h1>
+            <p>Explore memory allocation strategies in real-time</p>
+        </div>
+
+        <div class="input-section">
+            <div class="input-group">
+                <input type="text" id="processSizes" placeholder="Process Sizes (comma-separated)">
+            </div>
+            <div class="input-group">
+                <input type="text" id="blockSizes" placeholder="Memory Block Sizes (comma-separated)">
+            </div>
+        </div>
+
+        <div class="action-buttons">
+            <button class="btn btn-simulate" onclick="simulateAllocation()">Simulate</button>
+            <button class="btn btn-random" onclick="generateRandomData()">Random Data</button>
+            <button class="btn btn-clear" onclick="clearSimulation()">Clear</button>
+        </div>
+
+        <div id="allocationResults"></div>
+    </div>
+
+    <script>
+        function generateRandomData() {
+            const processCount = Math.floor(Math.random() * 5) + 3;
+            const blockCount = Math.floor(Math.random() * 5) + 3;
+            
+            const processes = Array.from({length: processCount}, () => Math.floor(Math.random() * 400) + 100);
+            const blocks = Array.from({length: blockCount}, () => Math.floor(Math.random() * 600) + 200);
+            
+            document.getElementById('processSizes').value = processes.join(', ');
+            document.getElementById('blockSizes').value = blocks.join(', ');
+        }
+
+        function clearSimulation() {
+            document.getElementById('processSizes').value = '';
+            document.getElementById('blockSizes').value = '';
+            document.getElementById('allocationResults').innerHTML = '';
+        }
+
+        function simulateAllocation() {
+            const processSizesInput = document.getElementById("processSizes").value;
+            const blockSizesInput = document.getElementById("blockSizes").value;
+
+            if (!processSizesInput || !blockSizesInput) {
+                alert('Please enter both process and block sizes');
+                return;
+            }
+
+            const processes = processSizesInput.split(",").map(size => parseInt(size.trim()));
+            const blocks = blockSizesInput.split(",").map(size => parseInt(size.trim()));
+
+            const allocationMethods = [
+                { name: 'First Fit', algorithm: firstFitAllocation },
+                { name: 'Best Fit', algorithm: bestFitAllocation },
+                { name: 'Worst Fit', algorithm: worstFitAllocation }
+            ];
+
+            const resultsContainer = document.getElementById('allocationResults');
+            resultsContainer.innerHTML = '';
+
+            allocationMethods.forEach(method => {
+                const allocation = method.algorithm(processes.slice(), blocks.slice());
+                renderAllocationMethod(method.name, processes, blocks, allocation);
+            });
+        }
+
+        function renderAllocationMethod(methodName, processes, blocks, allocation) {
+            const resultsContainer = document.getElementById('allocationResults');
+            const methodContainer = document.createElement('div');
+            methodContainer.className = 'allocation-method';
+
+            const totalMemory = blocks.reduce((a, b) => a + b, 0);
+            const allocatedMemory = allocation.reduce((total, processIndex, blockIndex) => 
+                total + (processIndex !== -1 ? processes[processIndex] : 0), 0);
+            const utilizationRate = ((allocatedMemory / totalMemory) * 100).toFixed(2);
+            const allocatedProcesses = allocation.filter(p => p !== -1).length;
+
+            methodContainer.innerHTML = `
+                <h2>${methodName} Allocation</h2>
+                <div class="memory-block-labels">
+                    ${blocks.map((blockSize, index) => `
+                        <div class="memory-block-label" style="width: ${blockSize / totalMemory * 100}%">
+                            Block ${index + 1}<br>${blockSize} MB
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="memory-block-container">
+                    ${blocks.map((blockSize, index) => {
+                        const processIndex = allocation[index];
+                        const processSize = processIndex !== -1 ? processes[processIndex] : 0;
+                        const freeSize = blockSize - processSize;
+                        const allocatedPercentage = (processSize / blockSize) * 100;
+                        const freePercentage = (freeSize / blockSize) * 100;
+
+                        return `
+                            <div class="memory-block" style="width: ${blockSize / totalMemory * 100}%; background: 
+                                linear-gradient(to right, 
+                                    var(--accent-green) ${allocatedPercentage}%, 
+                                    var(--text-secondary) ${allocatedPercentage}%)">
+                                <div class="block-label">
+                                    ${processIndex !== -1 
+                                        ? `P${processIndex + 1}<br>(${processSize} MB)` 
+                                        : 'Free<br>Block'}
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+                <div class="allocation-stats">
+                    <div class="stat-card">
+                        <h3>Memory Utilization</h3>
+                        <p>${utilizationRate}%</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Allocated Processes</h3>
+                        <p>${allocatedProcesses} / ${processes.length}</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Total Memory</h3>
+                        <p>${totalMemory} MB</p>
+                    </div>
+                </div>
+            `;
+
+            resultsContainer.appendChild(methodContainer);
+        }
+
+        function firstFitAllocation(processes, blocks) {
+            const allocation = new Array(blocks.length).fill(-1);
+            processes.forEach((process, i) => {
+                for (let j = 0; j < blocks.length; j++) {
+                    if (blocks[j] >= process && allocation[j] === -1) {
+                        allocation[j] = i;
+                        break;
+                    }
+                }
+            });
+            return allocation;
+        }
+
+        function bestFitAllocation(processes, blocks) {
+            const allocation = new Array(blocks.length).fill(-1);
+            processes.forEach((process, i) => {
+                let bestIdx = -1;
+                let bestSize = Infinity;
+                blocks.forEach((block, j) => {
+                    if (block >= process && block < bestSize && allocation[j] === -1) {
+                        bestIdx = j;
+                        bestSize = block;
+                    }
+                });
+                if (bestIdx !== -1) allocation[bestIdx] = i;
+            });
+            return allocation;
+        }
+
+        function worstFitAllocation(processes, blocks) {
+            const allocation = new Array(blocks.length).fill(-1);
+            processes.forEach((process, i) => {
+                let worstIdx = -1;
+                let worstSize = -1;
+                blocks.forEach((block, j) => {
+                    if (block >= process && block > worstSize && allocation[j] === -1) {
+                        worstIdx = j;
+                        worstSize = block;
+                    }
+                });
+                if (worstIdx !== -1) allocation[worstIdx] = i;
+            });
+            return allocation;
+        }
+    </script>
+</body>
+</html>
